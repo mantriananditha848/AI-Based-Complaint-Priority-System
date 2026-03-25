@@ -5,7 +5,7 @@ import logging
 import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+import logging
 from app.config.settings import get_settings
 from app.api.routes import complaint_routes, verification_routes, analytics_routes
 
@@ -71,7 +71,7 @@ logger.info("SMART CIVIC COMPLAINT MANAGEMENT SYSTEM - AI BACKEND")
 logger.info("=" * 80)
 logger.info(f"API Version: 1.0.0")
 logger.info(f"API Prefix: {settings.API_V1_PREFIX}")
-logger.info(f"Model: {settings.MODEL_NAME}")
+logger.info(f"Vision: Local YOLO models")
 logger.info(f"Debug Mode: {settings.DEBUG}")
 logger.info("=" * 80)
 

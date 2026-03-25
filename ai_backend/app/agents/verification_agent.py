@@ -1,14 +1,13 @@
 """
 Work Verification Agent for comparing before/after images.
-Uses Google Gemini 2.5 Flash to verify if contractor completed the work.
+Uses Hugging Face Inference API to verify if contractor completed the work.
 """
 import json
 import logging
 import re
 from typing import Any, Dict, Optional
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage, SystemMessage
+from huggingface_hub import InferenceClient
 
 from app.config.settings import get_settings
 
@@ -87,18 +86,17 @@ class WorkVerificationAgent:
     """Agent that verifies work completion by comparing before/after images."""
     
     def __init__(self):
-        """Initialize the Work Verification Agent with Gemini model."""
+        """Initialize the Work Verification Agent with Hugging Face Inference API."""
         settings = get_settings()
         logger.info(f"Initializing WorkVerificationAgent with model: {settings.MODEL_NAME}")
-        self.model = ChatGoogleGenerativeAI(
-            model=settings.MODEL_NAME,
-            google_api_key=settings.GOOGLE_API_KEY,
-            temperature=0.1,
-        )
-        logger.info("WorkVerificationAgent initialized successfully")
+        
+        # Use Inference API (no download)
+        self.client = InferenceClient(token=settings.HUGGINGFACE_API_KEY)
+        self.model_name = settings.MODEL_NAME
+        logger.info("WorkVerificationAgent initialized with Inference API")
     
-    def _parse_base64_image(self, base64_string: str, image_label: str) -> Dict[str, Any]:
-        """Parse base64 image string and prepare for Gemini API."""
+    def _parse_base64_image(self,  base64_string:str, image_label: str) -> str:
+        """Parse base64 image string."""
         if "," in base64_string:
             base64_string = base64_string.split(",")[1]
             logger.debug(f"Removed data URL prefix from {image_label}")
@@ -106,13 +104,7 @@ class WorkVerificationAgent:
         image_size_bytes = len(base64_string) * 3 / 4
         logger.info(f"Processing {image_label} - Approximate size: {image_size_bytes / 1024:.2f} KB")
         
-        image_data = {
-            "type": "image_url",
-            "image_url": {
-                "url": f"data:image/jpeg;base64,{base64_string}"
-            }
-        }
-        return image_data
+        return base64_string
     
     def _extract_json_from_response(self, response_text: str) -> Dict[str, Any]:
         """Extract JSON from model response."""
@@ -146,6 +138,8 @@ class WorkVerificationAgent:
             logger.error(f"Failed to parse JSON response: {e}")
             raise ValueError(f"Failed to parse JSON response: {e}")
     
+    # ...existing code...
+
     async def verify_completion(
         self, 
         before_image: str, 
@@ -154,14 +148,6 @@ class WorkVerificationAgent:
     ) -> Dict[str, Any]:
         """
         Verify if work has been completed by comparing before/after images.
-        
-        Args:
-            before_image: Base64 encoded original complaint image
-            after_image: Base64 encoded contractor completion image
-            category: Category of the original complaint
-            
-        Returns:
-            Dictionary with is_completed and error fields
         """
         logger.info("=" * 60)
         logger.info("WORK VERIFICATION AGENT - Starting verification")
@@ -169,50 +155,42 @@ class WorkVerificationAgent:
         logger.info(f"Category to verify: {category}")
         
         try:
-            # Parse both images
             logger.info("Step 1: Parsing before image...")
             before_image_data = self._parse_base64_image(before_image, "BEFORE image")
+            before_url = f"data:image/png;base64,{before_image_data}"
             
             logger.info("Step 2: Parsing after image...")
             after_image_data = self._parse_base64_image(after_image, "AFTER image")
+            after_url = f"data:image/png;base64,{after_image_data}"
             
-            # Create messages for the model
-            logger.info("Step 3: Creating messages for Gemini model...")
+            logger.info("Step 3: Creating chat messages...")
             messages = [
-                SystemMessage(content=VERIFICATION_AGENT_SYSTEM_PROMPT),
-                HumanMessage(
-                    content=[
-                        {"type": "text", "text": f"Compare these two images to verify if the work for category '{category}' has been completed.\n\nBEFORE IMAGE (original complaint):"},
-                        before_image_data,
-                        {"type": "text", "text": "\n\nAFTER IMAGE (contractor's completion photo):"},
-                        after_image_data,
-                        {"type": "text", "text": f"\n\nCategory: {category}\n\nDetermine if the {category} issue has been resolved."}
-                    ]
-                )
+                {"role": "system", "content": VERIFICATION_AGENT_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": f"Category: {category}. Compare BEFORE and AFTER images. Return JSON only."},
+                        {"type": "image_url", "image_url": {"url": before_url}},
+                        {"type": "image_url", "image_url": {"url": after_url}},
+                    ],
+                },
             ]
             
-            # Invoke the model
-            logger.info("Step 4: Invoking Gemini model for verification...")
-            response = await self.model.ainvoke(messages)
-            response_text = response.content
-            logger.info("Step 4: Gemini model response received")
-            logger.info(f"Raw Response from Gemini:\n{response_text}")
+            logger.info("Step 4: Invoking Hugging Face Inference API (chat_completion)...")
+            response = self.client.chat_completion(
+                model=self.model_name,
+                messages=messages,
+                max_tokens=2048
+            )
+            response_text = response.choices[0].message.content
+            logger.info("Step 4: Hugging Face response received")
             
-            # Parse the JSON response
             logger.info("Step 5: Parsing JSON response...")
             parsed_response = self._extract_json_from_response(response_text)
             logger.info(f"Step 5: Parsed response: {json.dumps(parsed_response, indent=2)}")
             
             is_completed = parsed_response.get("is_completed", False)
             error = parsed_response.get("error", None)
-            
-            logger.info(f"Verification Result: is_completed={is_completed}")
-            if error:
-                logger.info(f"Error: {error}")
-            
-            logger.info("=" * 60)
-            logger.info("WORK VERIFICATION AGENT - Verification completed")
-            logger.info("=" * 60)
             
             return {
                 "is_completed": is_completed,
@@ -231,6 +209,8 @@ class WorkVerificationAgent:
                 "is_completed": False,
                 "error": f"Verification failed: {str(e)}"
             }
+
+# ...existing code...
 
 
 # Singleton instance

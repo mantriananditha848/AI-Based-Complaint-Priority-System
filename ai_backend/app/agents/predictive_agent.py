@@ -1,14 +1,14 @@
 """
 Predictive Analysis Agent for generating civic issue prediction reports.
-Uses Google Gemini to analyze historical data and predict future issues.
+Uses Hugging Face Inference API to analyze historical data and predict future issues.
 """
 import json
 import logging
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-import re
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage, SystemMessage
+
+from huggingface_hub import InferenceClient
 
 from app.config.settings import get_settings
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 # Predictive Analysis Agent System Prompt
-PREDICTIVE_AGENT_SYSTEM_PROMPT = """You are an expert AI Urban Infrastructure Analyst and Predictive Risk Specialist who analyzes civic complaint data to identify hidden patterns, predict major infrastructure failures, and provide preventive recommendations.
+PREDICTIVE_AGENT_SYSTEM_PROMPT = """You are an expert AI Urban Infrastructure Analyst and Predictive Risk Specialist who analyzes civic complaint data to identify hidden patterns, predict future issues, and provide preventive recommendations.
 
 ## YOUR MISSION:
 
@@ -134,18 +134,17 @@ class PredictiveAnalysisAgent:
     """Agent that analyzes historical ticket data and generates prediction reports."""
     
     def __init__(self):
-        """Initialize the Predictive Analysis Agent with Gemini model."""
+        """Initialize the Predictive Analysis Agent with Hugging Face Inference API."""
         settings = get_settings()
         logger.info(f"Initializing PredictiveAnalysisAgent with model: {settings.MODEL_NAME}")
-        self.model = ChatGoogleGenerativeAI(
-            model=settings.MODEL_NAME,
-            google_api_key=settings.GOOGLE_API_KEY,
-            temperature=0.3,  # Slightly higher for creative report writing
-        )
-        logger.info("PredictiveAnalysisAgent initialized successfully")
+        
+        # Use Inference API (no download)
+        self.client = InferenceClient(token=settings.HUGGINGFACE_API_KEY)
+        self.model_name = settings.MODEL_NAME
+        logger.info("PredictiveAnalysisAgent initialized with Inference API")
     
     def _prepare_ticket_summary(self, tickets: List[Dict[str, Any]]) -> str:
-        """Prepare a summary of tickets for the LLM."""
+        """Prepare a summary of tickets for the model."""
         if not tickets:
             return "No tickets provided."
         
@@ -176,25 +175,31 @@ class PredictiveAnalysisAgent:
             ticket_summary = self._prepare_ticket_summary(tickets)
             logger.info(f"Step 1: Summary prepared ({len(ticket_summary)} characters)")
             
-            # Create messages for the model
-            logger.info("Step 2: Creating messages for Gemini model...")
+            # Create prompt for the model
+           # ...existing code...
+
+            logger.info("Step 2: Creating chat messages...")
             messages = [
-                SystemMessage(content=PREDICTIVE_AGENT_SYSTEM_PROMPT),
-                HumanMessage(
-                    content=f"""Analyze the following civic complaint ticket data and generate a predictive HTML report for the next 30 days.
-
-{ticket_summary}
-
-Generate a comprehensive HTML report with predictions and recommendations."""
-                )
+                {"role": "system", "content": PREDICTIVE_AGENT_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": (
+                        "Analyze the following civic complaint ticket data and generate a predictive HTML report:\n\n"
+                        f"{ticket_summary}"
+                    ),
+                },
             ]
             logger.info("Step 2: Messages created successfully")
             
-            # Invoke the model
-            logger.info("Step 3: Invoking Gemini model for report generation...")
-            response = await self.model.ainvoke(messages)
-            report_html = response.content
-            logger.info("Step 3: Gemini model response received")
+            logger.info("Step 3: Invoking Hugging Face Inference API (chat_completion)...")
+            response = self.client.chat_completion(
+                model=self.model_name,
+                messages=messages,
+                max_tokens=4096
+            )
+            report_html = response.choices[0].message.content
+            logger.info("Step 3: Hugging Face response received")
+# ...existing code...
             logger.info(f"Step 3: Report length: {len(report_html)} characters")
             
             # Clean up the response
