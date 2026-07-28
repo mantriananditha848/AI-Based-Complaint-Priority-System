@@ -1,6 +1,6 @@
 # Smart Civic Complaint Management System
 
-A comprehensive platform for citizens to report civic issues in Ahmedabad, Gujarat, India. Features AI-powered complaint analysis, automatic categorization, work verification, and predictive analytics.
+A comprehensive platform for citizens to report civic issues in India. Features AI-powered complaint analysis, automatic categorization, work verification, and predictive analytics.
 
 ## 🏗️ Architecture
 
