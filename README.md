@@ -1,51 +1,40 @@
-# Smart Civic Complaint Management System
+# Citizen Complaint Prioritization System
 
-A comprehensive platform for citizens to report civic issues in India. Features AI-powered complaint analysis, automatic categorization, work verification, and predictive analytics.
+A lightweight AI-driven civic complaint solution with a FastAPI backend and Streamlit user interface. The project analyzes complaint images, maps ward location, prioritizes issues, and returns structured output for decision-making.
 
 ## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      Smart Civic Platform                        │
+│                  Complaint Prioritization System                │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────────┐          ┌──────────────────┐             │
-│  │   Django Backend │◄────────►│    AI Backend    │             │
-│  │   (Port 8000)    │   REST   │   (Port 8080)    │             │
-│  │                  │   API    │                  │             │
-│  │  • User Portal   │          │  • Image Analysis│             │
-│  │  • Admin Portal  │          │  • Work Verify   │             │
-│  │  • Ticket Mgmt   │          │  • Predictions   │             │
-│  │  • Contractor    │          │  • Ward Mapping  │             │
-│  └──────────────────┘          └──────────────────┘             │
-│           │                            │                         │
-│           ▼                            ▼                         │
-│    ┌────────────┐              ┌──────────────┐                 │
-│    │  SQLite DB │              │ Google Gemini│                 │
-│    └────────────┘              │  2.5 Flash   │                 │
-│                                └──────────────┘                 │
+│                                                                 │
+│  ┌──────────────────┐          ┌──────────────────────────┐      │
+│  │   Streamlit UI   │  ↔ HTTP  │     FastAPI AI Backend   │      │
+│  │  (Local frontend)│          │   (Port 8080)            │      │
+│  │                  │          │                          │      │
+│  │  • Image upload  │          │  • Image analysis        │      │
+│  │  • Location form │          │  • Ward mapping          │      │
+│  │  • Result display│          │  • Priority scoring      │
+│  └──────────────────┘          └──────────────────────────┘      │
+│                                                                 │
+│                                 │                               │
+│                                 ▼                               │
+│                           ┌──────────────┐                      │
+│                           │  GeoJSON Ward │                      │
+│                           │  mapping data │                      │
+│                           └──────────────┘                      │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ## 🌟 Features
 
-### User Portal (Django)
-- 📸 Photo capture with GPS location
-- 🗺️ Automatic reverse geocoding
-- 🎫 Ticket tracking (CMP-YYYYMMDD-NNN format)
-- ⭐ Work rating system (1-5 stars)
-
-### Admin Portal (Django)
-- 👥 Ward management
-- 🔧 Contractor management
-- 📋 Ticket assignment & status updates
-
-### AI Features (FastAPI)
-- 🔍 **Image Analysis**: Detect civic issues, categorize, assess severity
-- 🛠️ **Tool Suggestions**: Recommended tools & safety equipment
-- 📍 **Ward Mapping**: GeoJSON-based location to ward mapping
-- ✅ **Work Verification**: Before/after image comparison
-- 📊 **Predictive Analytics**: 30-day risk prediction reports
+- 📸 Upload civic complaint images
+- 🧠 AI-based issue detection and categorization
+- 📍 Ward mapping using geographic coordinates
+- 🔥 Priority scoring for faster issue handling
+- 🧾 Streamlit frontend for easy interaction
+- 📊 Predictive output with structured response fields
 
 ---
 
@@ -60,129 +49,105 @@ A comprehensive platform for citizens to report civic issues in India. Features 
 
 ```bash
 git clone <repository-url>
-cd autonomous_hacks_finale_winners
+cd Autonomous_Hacks_Finale
 ```
 
-### 2. Start Django Backend (Port 8000)
-
-```bash
-cd django_backend
-pip install -r requirements.txt
-python3 manage.py migrate
-python3 manage.py runserver 0.0.0.0:8000
-```
-
-### 3. Start AI Backend (Port 8080)
+### 2. Start the AI Backend (FastAPI)
 
 ```bash
 cd ai_backend
-cp .env.example .env
-# Add GOOGLE_API_KEY to .env
-
+copy .env.example .env
+:: Add your GOOGLE_API_KEY to .env
 uv sync
 uv run uvicorn main:app --reload --port 8080
+```
+
+### 3. Start the Streamlit Frontend
+
+```bash
+cd ..\steamlit_frontend
+streamlit run app.py
 ```
 
 ---
 
 ## 📡 API Endpoints
 
-### Django Backend (Port 8000)
+Base URL: `http://localhost:8080/api/v1`
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/capture/` | GET | Photo capture page |
-| `/track/` | GET | Ticket tracking page |
-| `/admin/` | GET | Django admin |
-| `/api/user/capture-photo/` | POST | Submit photo with location |
-| `/api/user/submit-complaint/` | POST | Submit complaint for AI analysis |
-| `/api/user/track-ticket/` | GET | Track ticket by number |
-| `/api/user/rate-ticket/` | POST | Rate resolved ticket |
-
-### AI Backend (Port 8080)
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/analyze/complaint` | POST | Analyze complaint image |
-| `/api/v1/verify/completion` | POST | Verify work completion |
-| `/api/v1/analytics/predict` | POST | Generate predictive report |
-| `/docs` | GET | Swagger API documentation |
+| `/analyze/complaint` | POST | Analyze complaint image and return issue details |
+| `/analyze/combined` | POST | Analyze image, map ward, and compute priority score |
+| `/analyze/prioritize` | POST | Compute priority from dropdown inputs |
+| `/verify/completion` | POST | Verify before/after work completion |
+| `/analyze/health` | GET | Health check for analysis service |
+| `/docs` | GET | Swagger UI documentation |
 
 ---
 
 ## 🗂️ Project Structure
 
 ```
-autonomous_hacks_finale_winners/
-├── django_backend/           # Django web application
-│   ├── civic_complaint_system/  # Project settings
-│   ├── user_portal/             # Citizen-facing app
-│   ├── admin_portal/            # Admin management
-│   └── requirements.txt
-│
+Autonomous_Hacks_Finale/
 ├── ai_backend/               # FastAPI AI services
 │   ├── app/
-│   │   ├── agents/              # AI agents (vision, verification, predictive)
-│   │   ├── api/routes/          # API endpoints
-│   │   ├── api/schemas/         # Pydantic models
-│   │   ├── services/            # Ward mapping service
-│   │   └── data/                # GeoJSON ward boundaries
+│   │   ├── agents/           # AI agents and workflow logic
+│   │   ├── api/routes/       # FastAPI routers
+│   │   ├── api/schemas/      # Pydantic request/response models
+│   │   ├── config/           # Settings management
+│   │   ├── data/             # GeoJSON ward boundaries
+│   │   ├── services/         # Ward mapping and utility services
+│   │   └── utils/            # Priority calculation and rules
 │   ├── main.py
-│   └── pyproject.toml
+│   ├── pyproject.toml
+│   └── README.md
 │
-└── README.md                 # This file
+├── steamlit_frontend/        # Streamlit user interface
+│   └── app.py
+├── README.md                 # Project overview
+└── convert_img.py            # Utility script for image conversion
 ```
 
 ---
 
-## 📋 Issue Categories
+## 🎯 How It Works
 
-| Category | Department | Severity Levels |
-|----------|------------|-----------------|
-| Garbage/Waste accumulation | Sanitation Department | Low, Medium, High |
-| Manholes/drainage damage | Roads & Infrastructure | Low, Medium, High |
-| Water leakage | Water Supply Department | Low, Medium, High |
-| Drainage overflow | Drainage Department | Low, Medium, High |
-
----
-
-## 🔄 Ticket Lifecycle
-
-```
-SUBMITTED → ASSIGNED → IN_PROGRESS → RESOLVED
-    │           │            │           │
-    └── AI      └── Admin    └── Work    └── User
-       analyzes    assigns      starts      rates
-```
+1. User uploads an image in the Streamlit UI.
+2. The frontend sends the image and location data to the FastAPI backend.
+3. The backend runs image analysis, detects issues, and maps the ward.
+4. Priority scoring is computed and returned as structured output.
+5. The UI displays detected issues, ward number, and priority results.
 
 ---
 
-## 🛠️ Technology Stack
+## 🔧 Technology Stack
 
 | Component | Technology |
 |-----------|------------|
-| Web Backend | Django 5.0, Django REST Framework |
-| AI Backend | FastAPI, LangGraph, Google Gemini 2.5 Flash |
-| Database | SQLite3 (Django) |
-| Geospatial | Shapely, geopy, Nominatim |
-| Frontend | Bootstrap 5, Vanilla JavaScript |
-| Package Manager | pip (Django), uv (AI) |
+| Backend | FastAPI |
+| Frontend | Streamlit |
+| AI / Logic | Local vision agents and priority engine |
+| Geospatial | GeoJSON ward mapping |
+| Package Manager | uv |
 
 ---
 
 ## 📚 Documentation
 
-- **Django Backend**: See [django_backend/README.md](django_backend/README.md)
-- **AI Backend**: See [ai_backend/README.md](ai_backend/README.md)
-- **AI Swagger UI**: http://localhost:8080/docs
+- **AI Backend**: `ai_backend/README.md`
+- **Streamlit Frontend**: `steamlit_frontend/app.py`
+- **API Documentation**: `http://localhost:8080/docs`
 
 ---
 
-## 👥 Contributors
+## 👤 Notes
 
-- **Development**: Smart Civic Team
+- This project does not use a Django backend.
+- Add your `GOOGLE_API_KEY` to `ai_backend/.env` before running.
+- The frontend is configured to call `http://127.0.0.1:8000/api/v1/analyze/combined` by default; update `steamlit_frontend/app.py` if your backend runs on a different port.
 
 ---
 
-**Made with ❤️ for a Better Ahmedabad**
-"# AI-Based-Complaint-Priority-System" 
+**Made with ❤️ for AI-first civic complaint prioritization**
+ 
